@@ -7,6 +7,8 @@ type NumberedLine = (Maybe Int, String)
 
 type NumberedLines = [NumberedLine]
 
+data PadMode = PadLeft | PadRight
+
 printHelpText :: String -> IO ()
 printHelpText msg = do
   putStrLn (msg ++ "\n")
@@ -46,6 +48,20 @@ readLines :: FilePath -> IO [String]
 readLines filePath = do
   content <- readFile filePath
   return (lines content)
+
+pad :: PadMode -> Int -> String -> String
+pad mode n str =
+  let diff = n - length str
+      padding = replicate diff ' '
+   in case mode of
+        PadLeft -> padding ++ str
+        PadRight -> str ++ padding
+
+padLeft :: Int -> String -> String
+padLeft = pad PadLeft
+
+padRight :: Int -> String -> String
+padRight = pad PadRight
 
 main :: IO ()
 main = do
