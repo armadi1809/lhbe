@@ -1,6 +1,11 @@
 module Main (main) where
 
+import Data.Char (isPrint, isSeparator)
 import System.Environment (getArgs, getProgName)
+
+type NumberedLine = (Maybe Int, String)
+
+type NumberedLines = [NumberedLine]
 
 printHelpText :: String -> IO ()
 printHelpText msg = do
@@ -11,6 +16,36 @@ printHelpText msg = do
 parseArguments :: [String] -> Maybe FilePath
 parseArguments [filePath] = Just filePath
 parseArguments _ = Nothing
+
+isEmpty :: String -> Bool
+isEmpty str = null str || all (\s -> not (isPrint s) || isSeparator s) str
+
+isNotEmpty :: String -> Bool
+isNotEmpty str = not (isEmpty str)
+
+numberLines :: (String -> Bool) -> (String -> Bool) -> [String] -> NumberedLines
+numberLines shouldIncr shouldNumber text =
+  let go :: Int -> [String] -> NumberedLines
+      go _ [] = []
+      go counter (x : xs) =
+        let mNumbering = if shouldNumber x then Just counter else Nothing
+            newCounter = if shouldIncr x then counter + 1 else counter
+         in (mNumbering, x) : go newCounter xs
+   in go 1 text
+
+numberAllLines :: [String] -> NumberedLines
+numberAllLines = numberLines (const True) (const True)
+
+numberNonEmptyLines :: [String] -> NumberedLines
+numberNonEmptyLines = numberLines (const True) isNotEmpty
+
+numberAndIncrementNonEmptyLines :: [String] -> NumberedLines
+numberAndIncrementNonEmptyLines = numberLines isNotEmpty isNotEmpty
+
+readLines :: FilePath -> IO [String]
+readLines filePath = do
+  content <- readFile filePath
+  return (lines content)
 
 main :: IO ()
 main = do
