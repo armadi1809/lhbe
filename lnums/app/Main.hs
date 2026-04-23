@@ -1,6 +1,7 @@
 module Main (main) where
 
 import Data.Char (isPrint, isSeparator)
+import Data.Maybe (mapMaybe)
 import System.Environment (getArgs, getProgName)
 
 type NumberedLine = (Maybe Int, String)
@@ -9,15 +10,23 @@ type NumberedLines = [NumberedLine]
 
 data PadMode = PadLeft | PadRight
 
+data LineNumberOptions = ReverseNumbering | SkipEmptyLines | LeftAlign deriving (Eq)
+
 printHelpText :: String -> IO ()
 printHelpText msg = do
   putStrLn (msg ++ "\n")
   progName <- getProgName
   putStrLn ("Usage: " ++ progName ++ " <filename>")
 
-parseArguments :: [String] -> Maybe FilePath
-parseArguments [filePath] = Just filePath
-parseArguments _ = Nothing
+lnOptionFromString :: String -> Maybe LineNumberOptions
+lnOptionFromString "--reverse" = Just ReverseNumbering
+lnOptionFromString "--skip-empty" = Just SkipEmptyLines
+lnOptionFromString "--left-align" = Just LeftAlign
+lnOptionFromString _ = Nothing
+
+parseArguments :: [String] -> (Maybe FilePath, [LineNumberOptions])
+parseArguments [] = (Nothing, [])
+parseArguments (filename : options) = (Just filename, mapMaybe lnOptionFromString options)
 
 isEmpty :: String -> Bool
 isEmpty str = null str || all (\s -> not (isPrint s) || isSeparator s) str
@@ -41,8 +50,8 @@ numberAllLines = numberLines (const True) (const True)
 numberNonEmptyLines :: [String] -> NumberedLines
 numberNonEmptyLines = numberLines (const True) isNotEmpty
 
-numberAndIncrementNonEmptyLines :: [String] -> NumberedLines
-numberAndIncrementNonEmptyLines = numberLines isNotEmpty isNotEmpty
+-- numberAndIncrementNonEmptyLines :: [String] -> NumberedLines
+-- numberAndIncrementNonEmptyLines = numberLines isNotEmpty isNotEmpty
 
 readLines :: FilePath -> IO [String]
 readLines filePath = do
@@ -57,11 +66,11 @@ pad mode n str =
         PadLeft -> padding ++ str
         PadRight -> str ++ padding
 
-padLeft :: Int -> String -> String
-padLeft = pad PadLeft
+-- padLeft :: Int -> String -> String
+-- padLeft = pad PadLeft
 
-padRight :: Int -> String -> String
-padRight = pad PadRight
+-- padRight :: Int -> String -> String
+-- padRight = pad PadRight
 
 prettyNumberedLines :: PadMode -> NumberedLines -> [String]
 prettyNumberedLines mode lineNums =
@@ -74,14 +83,24 @@ prettyNumberedLines mode lineNums =
 main :: IO ()
 main = do
   cliArgs <- getArgs
-  let mFilePath = parseArguments cliArgs
+  let (mFilePath, options) = parseArguments cliArgs
+      numberFunction =
+        if SkipEmptyLines `elem` options
+          then numberNonEmptyLines
+          else numberAllLines
+      padMode =
+        if LeftAlign `elem` options
+          then PadRight
+          else PadLeft
+      go filePath = do
+        fileLines <- readLines filePath
+        let numbered = numberFunction fileLines
+            prettyNumbered = prettyNumberedLines padMode numbered
+            revNumbered = numberFunction (reverse fileLines)
+            revPretty = reverse (prettyNumberedLines padMode revNumbered)
+        mapM_ putStrLn (if ReverseNumbering `elem` options then revPretty else prettyNumbered)
+
   maybe
     (printHelpText "Missing filename")
-    ( \filePath ->
-        do
-          fileLines <- readLines filePath
-          let numbered = numberAllLines fileLines
-              prettyNumbered = prettyNumberedLines PadRight numbered
-          mapM_ putStrLn prettyNumbered
-    )
+    go
     mFilePath
