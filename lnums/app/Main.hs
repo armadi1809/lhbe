@@ -63,8 +63,25 @@ padLeft = pad PadLeft
 padRight :: Int -> String -> String
 padRight = pad PadRight
 
+prettyNumberedLines :: PadMode -> NumberedLines -> [String]
+prettyNumberedLines mode lineNums =
+  let (numbers, text) = unzip lineNums
+      numberStrings = map (maybe "" show) numbers
+      maxLength = maximum (map length numberStrings)
+      paddedNumbers = map (pad mode maxLength) numberStrings
+   in zipWith (\n l -> n ++ " " ++ l) paddedNumbers text
+
 main :: IO ()
 main = do
   cliArgs <- getArgs
   let mFilePath = parseArguments cliArgs
-  maybe (printHelpText "Missing filename") (\filePath -> putStrLn filePath) mFilePath
+  maybe
+    (printHelpText "Missing filename")
+    ( \filePath ->
+        do
+          fileLines <- readLines filePath
+          let numbered = numberAllLines fileLines
+              prettyNumbered = prettyNumberedLines PadRight numbered
+          mapM_ putStrLn prettyNumbered
+    )
+    mFilePath
