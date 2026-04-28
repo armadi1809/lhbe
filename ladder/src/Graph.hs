@@ -1,6 +1,16 @@
-module Graph () where
+module Graph
+  ( empty,
+    addNode,
+    hasNode,
+    addEdge,
+    addEdges,
+    buildDiGraph,
+    children,
+  )
+where
 
 import qualified Data.AssocMap as M
+import qualified Data.List as L
 
 type DiGraph a = M.AssocMap a [a]
 
@@ -18,3 +28,22 @@ addNode =
           Nothing -> Just []
           value -> value
     )
+
+addEdge :: (Eq a) => (a, a) -> DiGraph a -> DiGraph a
+addEdge (node, child) = M.alter insertEdge node
+  where
+    insertEdge Nothing = Just [child]
+    insertEdge (Just nodes) = Just (L.nub (child : nodes))
+
+addEdges :: (Eq a) => [(a, a)] -> DiGraph a -> DiGraph a
+addEdges [] graph = graph
+addEdges (x : xs) graph = addEdge x (addEdges xs graph)
+
+buildDiGraph :: (Eq a) => [(a, [a])] -> DiGraph a
+buildDiGraph nodes = go nodes M.empty
+  where
+    go [] graph = graph
+    go ((key, value) : xs) graph = M.insert key value (go xs graph)
+
+children :: (Eq a) => a -> DiGraph a -> [a]
+children = M.findWithDefault []
