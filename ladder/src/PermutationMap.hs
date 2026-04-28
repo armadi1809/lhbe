@@ -7,6 +7,7 @@ module PermutationMap
     findWithDefault,
     insert,
     createPermutationMap,
+    PermutationMap,
   )
 where
 

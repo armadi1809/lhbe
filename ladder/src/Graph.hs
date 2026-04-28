@@ -6,6 +6,7 @@ module Graph
     addEdges,
     buildDiGraph,
     children,
+    DiGraph,
   )
 where
 
